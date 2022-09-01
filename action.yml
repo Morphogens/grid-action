@@ -8,11 +8,13 @@ inputs:
     required: true
   docker_context:
     required: true
-  environment:
-    required: true
+  docker_file:
+    required: false
   grid_deploy_key:
     required: true
-  project:
+  grid_environment:
+    required: true
+  grid_project:
     required: true
 
 runs:
@@ -43,11 +45,11 @@ runs:
       id: image-exists
       shell: bash
       run: |
-        if aws ecr describe-images --repository-name projects --region us-east-1 --image-ids=imageTag=${{ inputs.project }}-${{ steps.folder-hash.outputs.hash }} >/dev/null 2>&1; then
-          echo 'Image already exists.'
+        if aws ecr describe-images --repository-name projects --region us-east-1 --image-ids=imageTag=${{ inputs.grid_project }}-${{ steps.folder-hash.outputs.hash }} >/dev/null 2>&1; then
+          echo 'Image already exists, skipping build.'
           echo '::set-output name=exists::true'
         else
-          echo 'Image does not exist.'
+          echo 'Image does not exist, building.'
           echo '::set-output name=exists::false'
         fi
       env:
@@ -60,8 +62,9 @@ runs:
       if: steps.image-exists.outputs.exists == 'false'
       with:
         context: ${{ inputs.docker_context }}
+        file: ${{ inputs.docker_file }}
         push: true
-        tags: "775974887579.dkr.ecr.us-east-1.amazonaws.com/projects:${{ inputs.project }}-${{ steps.folder-hash.outputs.hash }}"
+        tags: "775974887579.dkr.ecr.us-east-1.amazonaws.com/projects:${{ inputs.grid_project }}-${{ steps.folder-hash.outputs.hash }}"
         cache-from: type=gha
         cache-to: type=gha
 
@@ -83,7 +86,7 @@ runs:
         python -m pip install -q git+ssh://git@github.com/Morphogens/grid.git@main
 
         # Run deploy
-        grid deploy --environment ${{ inputs.environment }} --project ${{ inputs.project }} --commit ${{ steps.folder-hash.outputs.hash }}
+        grid deploy --environment ${{ inputs.grid_environment }} --project ${{ inputs.grid_project }} --commit ${{ steps.folder-hash.outputs.hash }}
       env:
         AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
