@@ -45,12 +45,14 @@ runs:
       id: image-exists
       shell: bash
       run: |
-        if aws ecr describe-images --repository-name projects --region us-east-1 --image-ids=imageTag=${{ inputs.grid_project }}-${{ steps.folder-hash.outputs.hash }} >/dev/null 2>&1; then
-          echo 'Image already exists, skipping build.'
-          echo '::set-output name=exists::true'
+        TAG="${{ inputs.grid_project }}-${{ steps.folder-hash.outputs.hash }}"
+        echo "::set-output name=tag::$TAG"
+        if aws ecr describe-images --repository-name projects --region us-east-1 --image-ids=imageTag=$TAG >/dev/null 2>&1; then
+          echo "Image $TAG already exists, skipping build."
+          echo "::set-output name=exists::true"
         else
-          echo 'Image does not exist, building.'
-          echo '::set-output name=exists::false'
+          echo "Image $TAG does not exist, building."
+          echo "::set-output name=exists::false"
         fi
       env:
         AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
@@ -64,7 +66,7 @@ runs:
         context: ${{ inputs.docker_context }}
         file: ${{ inputs.docker_file }}
         push: true
-        tags: "775974887579.dkr.ecr.us-east-1.amazonaws.com/projects:${{ inputs.grid_project }}-${{ steps.folder-hash.outputs.hash }}"
+        tags: "775974887579.dkr.ecr.us-east-1.amazonaws.com/projects:${{ steps.image-exists.outputs.tag }}"
         cache-from: type=gha
         cache-to: type=gha
 
