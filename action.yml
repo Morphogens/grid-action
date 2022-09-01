@@ -10,6 +10,8 @@ inputs:
     required: true
   docker_file:
     required: false
+  docker_test_command:
+    required: false
   grid_deploy_key:
     required: true
   grid_environment:
@@ -46,7 +48,9 @@ runs:
       shell: bash
       run: |
         TAG="${{ inputs.grid_project }}-${{ steps.folder-hash.outputs.hash }}"
+        IMAGE="775974887579.dkr.ecr.us-east-1.amazonaws.com/projects:$TAG"
         echo "::set-output name=tag::$TAG"
+        echo "::set-output name=image::$IMAGE"
         if aws ecr describe-images --repository-name projects --region us-east-1 --image-ids=imageTag=$TAG >/dev/null 2>&1; then
           echo "Image $TAG already exists, skipping build."
           echo "::set-output name=exists::true"
@@ -60,16 +64,21 @@ runs:
         AWS_REGION: us-east-1
 
     - name: Build docker image
+      id: build
       uses: docker/build-push-action@v2
       if: steps.image-exists.outputs.exists == 'false'
       with:
         context: ${{ inputs.docker_context }}
         file: ${{ inputs.docker_file }}
         push: true
-        tags: "775974887579.dkr.ecr.us-east-1.amazonaws.com/projects:${{ steps.image-exists.outputs.tag }}"
+        tags: ${{ steps.image-exists.outputs.image }}
         cache-from: type=gha
         cache-to: type=gha
 
+    - name: Test
+      if: inputs.docker_test_command && steps.build.conclusion == 'success'
+      run: docker run --rm ${{ steps.image-exists.outputs.image }} ${{ inputs.docker_test_command }}
+      
     - name: Deploy
       shell: bash
       run: |
