@@ -78,6 +78,7 @@ runs:
     - name: Test
       if: inputs.docker_test_command && steps.build.conclusion == 'success'
       run: docker run --rm ${{ steps.image_exists.outputs.image }} ${{ inputs.docker_test_command }}
+      shell: bash
       
     - name: Deploy
       shell: bash
