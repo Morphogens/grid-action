@@ -18,6 +18,9 @@ inputs:
     required: true
   grid_project:
     required: true
+  grid_package_ref:
+    required: false
+    default: main
 
 runs:
   using: composite
@@ -95,7 +98,7 @@ runs:
         export GIT_SSH_COMMAND="ssh -i /tmp/grid-key"
 
         # Install grid tool from private grid repo
-        python -m pip install -q git+ssh://git@github.com/Morphogens/grid.git@main
+        python -m pip install -q git+ssh://git@github.com/Morphogens/grid.git@${{ inputs.grid_package_ref }}
 
         # Run deploy
         grid deploy --environment ${{ inputs.grid_environment }} --project ${{ inputs.grid_project }} --commit ${{ steps.image_hash.outputs.hash }}
