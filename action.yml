@@ -40,18 +40,14 @@ runs:
         username: ${{ inputs.aws_access_key_id }}
         password: ${{ inputs.aws_secret_access_key }}
 
-    - name: Hash folder contents
+    - name: Calculate image hash and check existence
       id: image_hash
-      uses: theowenyoung/folder-hash@v2.0.1
-      with:
-        path: ${{ inputs.docker_context }}
-
-    - name: Check image existence
-      id: image_exists
       shell: bash
       run: |
-        TAG="${{ inputs.grid_project }}-${{ steps.image_hash.outputs.hash }}"
+        HASH=$(find ${{ inputs.docker_context }} -type f -print0 | sort -z | xargs -0 cat | sha1sum | awk '{ print $1 }')
+        TAG="${{ inputs.grid_project }}-$HASH"
         IMAGE="775974887579.dkr.ecr.us-east-1.amazonaws.com/projects:$TAG"
+        echo "::set-output name=hash::$HASH"
         echo "::set-output name=tag::$TAG"
         echo "::set-output name=image::$IMAGE"
         if aws ecr describe-images --repository-name projects --region us-east-1 --image-ids=imageTag=$TAG >/dev/null 2>&1; then
@@ -69,18 +65,18 @@ runs:
     - name: Build docker image
       id: build
       uses: docker/build-push-action@v2
-      if: steps.image_exists.outputs.exists == 'false'
+      if: steps.image_hash.outputs.exists == 'false'
       with:
         context: ${{ inputs.docker_context }}
         file: ${{ inputs.docker_file }}
         push: true
-        tags: ${{ steps.image_exists.outputs.image }}
+        tags: ${{ steps.image_hash.outputs.image }}
         cache-from: type=gha
         cache-to: type=gha
 
     - name: Test
       if: inputs.docker_test_command && steps.build.conclusion == 'success'
-      run: docker run --rm ${{ steps.image_exists.outputs.image }} ${{ inputs.docker_test_command }}
+      run: docker run --rm ${{ steps.image_hash.outputs.image }} ${{ inputs.docker_test_command }}
       shell: bash
       
     - name: Deploy
