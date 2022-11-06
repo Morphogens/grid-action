@@ -152,8 +152,9 @@ jobs:
           echo "  --project ${{ inputs.grid_project }} \\" >> $GITHUB_STEP_SUMMARY
           echo "  --hash ${{ needs.build.outputs.hash }} \\" >> $GITHUB_STEP_SUMMARY
           echo "  --commit ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "  --force" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          grid deploy --environment ${GRID_ENVIRONMENT} --project ${{ inputs.grid_project }} --hash ${{ needs.build.outputs.hash }} --commit ${{ github.sha }}
+          grid deploy --environment ${GRID_ENVIRONMENT} --project ${{ inputs.grid_project }} --hash ${{ needs.build.outputs.hash }} --commit ${{ github.sha }} --force
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.aws_access_key_id }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_access_key }}
