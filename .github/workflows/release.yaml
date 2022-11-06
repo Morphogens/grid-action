@@ -1,28 +1,29 @@
 name: "Morphogen grid build and release"
 description: "Builds and pushes images and deploys to grid."
 
-on: [push, workflow_call, workflow_dispatch]
-
-inputs:
-  aws_access_key_id:
-    required: true
-  aws_secret_access_key:
-    required: true
-  docker_context:
-    required: true
-  docker_file:
-    required: false
-  docker_test_command:
-    required: false
-  grid_deploy_key:
-    required: true
-  grid_environment:
-    required: true
-  grid_project:
-    required: true
-  grid_package_ref:
-    required: false
-    default: main
+on:
+  workflow_call:
+    inputs:
+      docker_context:
+        required: true
+      docker_file:
+        required: false
+      docker_test_command:
+        required: false
+      grid_environment:
+        required: true
+      grid_project:
+        required: true
+      grid_package_ref:
+        required: false
+        default: main
+    secrets:
+      aws_access_key_id:
+        required: true
+      aws_secret_access_key:
+        required: true
+      grid_deploy_key:
+        required: true
 
 jobs:
   build:
@@ -37,8 +38,8 @@ jobs:
         uses: docker/login-action@v1
         with:
           registry: 775974887579.dkr.ecr.us-east-1.amazonaws.com
-          username: ${{ inputs.aws_access_key_id }}
-          password: ${{ inputs.aws_secret_access_key }}
+          username: ${{ secrets.aws_access_key_id }}
+          password: ${{ secrets.aws_secret_access_key }}
 
       - name: Calculate image hash and check existence
         id: image_hash
@@ -58,8 +59,8 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
         env:
-          AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
-          AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.aws_access_key_id }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_access_key }}
           AWS_REGION: us-east-1
 
       - name: Build docker image
@@ -97,8 +98,8 @@ jobs:
         uses: docker/login-action@v1
         with:
           registry: 775974887579.dkr.ecr.us-east-1.amazonaws.com
-          username: ${{ inputs.aws_access_key_id }}
-          password: ${{ inputs.aws_secret_access_key }}
+          username: ${{ secrets.aws_access_key_id }}
+          password: ${{ secrets.aws_secret_access_key }}
 
       - name: Install reqs
         shell: bash
@@ -117,7 +118,7 @@ jobs:
           # Install grid tool from private grid repo
           python -m pip install -q git+ssh://git@github.com/Morphogens/grid.git@${{ inputs.grid_package_ref }}
         env:
-          GRID_DEPLOY_KEY: ${{ inputs.grid_deploy_key }}
+          GRID_DEPLOY_KEY: ${{ secrets.grid_deploy_key }}
 
       - name: Deploy
         shell: bash
@@ -125,6 +126,6 @@ jobs:
           echo "Running deploy: `grid deploy --environment ${{ inputs.grid_environment }} --project ${{ inputs.grid_project }} --hash ${{ needs.build.outputs.hash }} --commit ${{ github.sha }}`" >> $GITHUB_STEP_SUMMARY
           grid deploy --environment ${{ inputs.grid_environment }} --project ${{ inputs.grid_project }} --hash ${{ needs.build.outputs.hash }} --commit ${{ github.sha }}
         env:
-          AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
-          AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.aws_access_key_id }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_access_key }}
           AWS_REGION: us-east-1
