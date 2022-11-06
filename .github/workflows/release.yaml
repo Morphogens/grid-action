@@ -66,10 +66,10 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "image=$IMAGE" >> $GITHUB_OUTPUT
           if aws ecr describe-images --repository-name projects --region us-east-1 --image-ids=imageTag=$TAG >/dev/null 2>&1; then
-            echo "Image $TAG already exists, skipping build." >> $GITHUB_STEP_SUMMARY
+            echo "Image \`$TAG\` already exists, skipping build." >> $GITHUB_STEP_SUMMARY
             echo "exists=true" >> $GITHUB_OUTPUT
           else
-            echo "Image $TAG does not exist, building." >> $GITHUB_STEP_SUMMARY
+            echo "Image \`$TAG\` does not exist, building." >> $GITHUB_STEP_SUMMARY
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
         env:
@@ -143,12 +143,12 @@ jobs:
         shell: bash
         run: |
           echo 'Running deploy:' >> $GITHUB_STEP_SUMMARY
-          echo '```sh' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
           echo "grid deploy \\" >> $GITHUB_STEP_SUMMARY
           echo "  --environment ${GRID_ENVIRONMENT} \\" >> $GITHUB_STEP_SUMMARY
           echo "  --project ${{ inputs.grid_project }} \\" >> $GITHUB_STEP_SUMMARY
           echo "  --hash ${{ needs.build.outputs.hash }} \\" >> $GITHUB_STEP_SUMMARY
-          echo "  --commit --commit ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "  --commit ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           grid deploy --environment ${GRID_ENVIRONMENT} --project ${{ inputs.grid_project }} --hash ${{ needs.build.outputs.hash }} --commit ${{ github.sha }}
         env:
