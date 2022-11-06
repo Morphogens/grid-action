@@ -10,11 +10,15 @@ on:
         required: false
       docker_test_command:
         required: false
-      grid_environment:
-        required: true
       grid_project:
         required: true
       grid_package_ref:
+        required: false
+        default: main
+      git_production_branch:
+        required: false
+        default: production
+      git_staging_branch:
         required: false
         default: main
     secrets:
@@ -123,9 +127,13 @@ jobs:
       - name: Deploy
         shell: bash
         run: |
-          echo "Running deploy: `grid deploy --environment ${{ inputs.grid_environment }} --project ${{ inputs.grid_project }} --hash ${{ needs.build.outputs.hash }} --commit ${{ github.sha }}`" >> $GITHUB_STEP_SUMMARY
-          grid deploy --environment ${{ inputs.grid_environment }} --project ${{ inputs.grid_project }} --hash ${{ needs.build.outputs.hash }} --commit ${{ github.sha }}
+          echo "Running deploy: `grid deploy --environment ${GRID_ENVIRONMENT} --project ${{ inputs.grid_project }} --hash ${{ needs.build.outputs.hash }} --commit ${{ github.sha }}`" >> $GITHUB_STEP_SUMMARY
+          grid deploy --environment ${GRID_ENVIRONMENT} --project ${{ inputs.grid_project }} --hash ${{ needs.build.outputs.hash }} --commit ${{ github.sha }}
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.aws_access_key_id }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_access_key }}
           AWS_REGION: us-east-1
+          GRID_ENVIRONMENT: |-
+            ${{ github.ref_name == inputs.git_production_branch && 'production' ||
+              (github.ref_name == inputs.git_staging_branch && 'staging' ||
+                'test') }}
