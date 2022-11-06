@@ -1,24 +1,30 @@
 name: "Morphogen grid build and release"
-description: "Builds and pushes images and deploys to grid."
 
 on:
   workflow_call:
     inputs:
       docker_context:
+        type: string
         required: true
       docker_file:
+        type: string
         required: false
       docker_test_command:
+        type: string
         required: false
       grid_project:
+        type: string
         required: true
       grid_package_ref:
+        type: string
         required: false
         default: main
       git_production_branch:
+        type: string
         required: false
         default: production
       git_staging_branch:
+        type: string
         required: false
         default: main
     secrets:
