@@ -1,3 +1,13 @@
+# LEGACY V1 VERSION IS HERE -- NEW INVOCATIONS SHOULD USE JOB FORMAT:
+#
+# release_svc:
+#   name: Release svc
+#   uses: Morphogens/grid-action/.github/workflows/release.yaml@main
+#   secrets: inherit
+#   with:
+#     docker_context: ...
+#     grid_project: ...
+
 name: "Morphogen grid build and release"
 description: "Builds and pushes images and deploys to grid."
 

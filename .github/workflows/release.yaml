@@ -1,0 +1,161 @@
+name: "Morphogen grid build and release"
+
+on:
+  workflow_call:
+    inputs:
+      docker_context:
+        type: string
+        required: true
+      docker_file:
+        type: string
+        required: false
+      docker_test_command:
+        type: string
+        required: false
+      grid_project:
+        type: string
+        required: true
+      grid_package_ref:
+        type: string
+        required: false
+        default: main
+      git_production_branch:
+        type: string
+        required: false
+        default: production
+      git_staging_branch:
+        type: string
+        required: false
+        default: main
+    secrets:
+      aws_access_key_id:
+        required: true
+      aws_secret_access_key:
+        required: true
+      grid_deploy_key:
+        required: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Set up docker buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Morphogen ECR
+        uses: docker/login-action@v2
+        with:
+          registry: 775974887579.dkr.ecr.us-east-1.amazonaws.com
+          username: ${{ secrets.aws_access_key_id }}
+          password: ${{ secrets.aws_secret_access_key }}
+
+      - name: Calculate image hash and check existence
+        id: image_hash
+        shell: bash
+        run: |
+          HASH=$(find ${{ inputs.docker_context }} -not -path "*/.git/*" -type f -print0 | sort -z | xargs -0 cat | sha1sum | awk '{ print $1 }')
+          TAG="${{ inputs.grid_project }}-$HASH"
+          IMAGE="775974887579.dkr.ecr.us-east-1.amazonaws.com/projects:$TAG"
+          echo "hash=$HASH" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+          if aws ecr describe-images --repository-name projects --region us-east-1 --image-ids=imageTag=$TAG >/dev/null 2>&1; then
+            echo "Image \`$TAG\` already exists, skipping build." >> $GITHUB_STEP_SUMMARY
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Image \`$TAG\` does not exist, building." >> $GITHUB_STEP_SUMMARY
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.aws_access_key_id }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_access_key }}
+          AWS_REGION: us-east-1
+
+      - name: Build docker image
+        id: build
+        uses: docker/build-push-action@v3
+        if: steps.image_hash.outputs.exists == 'false'
+        with:
+          context: ${{ inputs.docker_context }}
+          file: ${{ inputs.docker_file }}
+          push: true
+          tags: ${{ steps.image_hash.outputs.image }}
+          cache-from: type=gha
+          cache-to: type=gha
+
+      - name: Test
+        if: inputs.docker_test_command && steps.build.conclusion == 'success'
+        run: docker run --rm ${{ steps.image_hash.outputs.image }} ${{ inputs.docker_test_command }}
+        shell: bash
+
+    outputs:
+      hash: ${{ steps.image_hash.outputs.hash }}
+      tag: ${{ steps.image_hash.outputs.tag }}
+      image: ${{ steps.image_hash.outputs.image }}
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    concurrency: |-
+      ${{ inputs.grid_project }}-${{ github.ref_name == inputs.git_production_branch && 'production' ||
+        (github.ref_name == inputs.git_staging_branch && 'staging' ||
+          'test') }}
+    needs: [build]
+    steps:
+      - name: Set up python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Login to Morphogen ECR
+        uses: docker/login-action@v2
+        with:
+          registry: 775974887579.dkr.ecr.us-east-1.amazonaws.com
+          username: ${{ secrets.aws_access_key_id }}
+          password: ${{ secrets.aws_secret_access_key }}
+
+      - name: Install reqs
+        shell: bash
+        run: |
+          # Install AWS authenticator
+          curl -s -o aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/aws-iam-authenticator
+          chmod +x ./aws-iam-authenticator
+          export PATH="${PWD}:$PATH"
+
+          # Add grid deploy key for pip install
+          echo "${GRID_DEPLOY_KEY}" > /tmp/grid-key
+          chmod 0600 /tmp/grid-key
+
+          export GIT_SSH_COMMAND="ssh -i /tmp/grid-key"
+
+          # Install grid tool from private grid repo
+          python -m pip install -q git+ssh://git@github.com/Morphogens/grid.git@${{ inputs.grid_package_ref }}
+        env:
+          GRID_DEPLOY_KEY: ${{ secrets.grid_deploy_key }}
+
+      - name: Deploy
+        shell: bash
+        run: |
+          echo 'Running deploy:' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "grid deploy \\" >> $GITHUB_STEP_SUMMARY
+          echo "  --environment ${GRID_ENVIRONMENT} \\" >> $GITHUB_STEP_SUMMARY
+          echo "  --project ${{ inputs.grid_project }} \\" >> $GITHUB_STEP_SUMMARY
+          echo "  --hash ${{ needs.build.outputs.hash }} \\" >> $GITHUB_STEP_SUMMARY
+          echo "  --commit ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grid deploy --environment ${GRID_ENVIRONMENT} --project ${{ inputs.grid_project }} --hash ${{ needs.build.outputs.hash }} --commit ${{ github.sha }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.aws_access_key_id }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_access_key }}
+          AWS_REGION: us-east-1
+          GRID_ENVIRONMENT: |-
+            ${{ github.ref_name == inputs.git_production_branch && 'production' ||
+              (github.ref_name == inputs.git_staging_branch && 'staging' ||
+                'test') }}
