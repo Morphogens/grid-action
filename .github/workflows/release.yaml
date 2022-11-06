@@ -1,6 +1,8 @@
 name: "Morphogen grid build and release"
 description: "Builds and pushes images and deploys to grid."
 
+on: [push, workflow_dispatch]
+
 inputs:
   aws_access_key_id:
     required: true
