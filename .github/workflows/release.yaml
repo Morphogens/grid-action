@@ -102,6 +102,10 @@ jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
+    concurrency: |-
+      ${{ grid_project }}-${{ github.ref_name == inputs.git_production_branch && 'production' ||
+        (github.ref_name == inputs.git_staging_branch && 'staging' ||
+          'test') }}
     needs: [build]
     steps:
       - name: Set up python
