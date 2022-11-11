@@ -27,6 +27,18 @@ on:
         type: string
         required: false
         default: main
+      grid_production_cluster:
+        type: string
+        required: false
+        default: grid-production
+      grid_staging_cluster:
+        type: string
+        required: false
+        default: grid-staging
+      grid_test_cluster:
+        type: string
+        required: false
+        default: grid-staging
     secrets:
       aws_access_key_id:
         required: true
@@ -148,17 +160,22 @@ jobs:
           echo 'Running deploy:' >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "grid deploy \\" >> $GITHUB_STEP_SUMMARY
+          echo "  --cluster ${GRID_CLUSTER} \\" >> $GITHUB_STEP_SUMMARY
           echo "  --environment ${GRID_ENVIRONMENT} \\" >> $GITHUB_STEP_SUMMARY
           echo "  --project ${{ inputs.grid_project }} \\" >> $GITHUB_STEP_SUMMARY
           echo "  --hash ${{ needs.build.outputs.hash }} \\" >> $GITHUB_STEP_SUMMARY
           echo "  --commit ${{ github.sha }} \\" >> $GITHUB_STEP_SUMMARY
           echo "  --force" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          grid deploy --environment ${GRID_ENVIRONMENT} --project ${{ inputs.grid_project }} --hash ${{ needs.build.outputs.hash }} --commit ${{ github.sha }} --force
+          grid deploy --cluster ${GRID_CLUSTER} --environment ${GRID_ENVIRONMENT} --project ${{ inputs.grid_project }} --hash ${{ needs.build.outputs.hash }} --commit ${{ github.sha }} --force
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.aws_access_key_id }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_access_key }}
           AWS_REGION: us-east-1
+          GRID_CLUSTER: |-
+            ${{ github.ref_name == inputs.git_production_branch && inputs.grid_production_cluster ||
+              (github.ref_name == inputs.git_staging_branch && inputs.grid_staging_cluster ||
+                inputs.grid_test_cluster) }}
           GRID_ENVIRONMENT: |-
             ${{ github.ref_name == inputs.git_production_branch && 'production' ||
               (github.ref_name == inputs.git_staging_branch && 'staging' ||
