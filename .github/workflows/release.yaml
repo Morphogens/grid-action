@@ -167,7 +167,7 @@ jobs:
           echo "  --commit ${{ github.sha }} \\" >> $GITHUB_STEP_SUMMARY
           echo "  --force" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          grid deploy --cluster ${GRID_CLUSTER} --environment ${GRID_ENVIRONMENT} --project ${{ inputs.grid_project }} --hash ${{ needs.build.outputs.hash }} --commit ${{ github.sha }} --force
+          grid deploy --cluster ${GRID_CLUSTER} --environment ${GRID_ENVIRONMENT} --project ${{ inputs.grid_project }} --hash ${{ needs.build.outputs.hash }} --commit ${{ github.sha }} ${{ inputs.grid_production_cluster == "artbreeder-prod" && "--force" || "" }}
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.aws_access_key_id }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_access_key }}
