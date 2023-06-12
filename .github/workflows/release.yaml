@@ -124,6 +124,8 @@ jobs:
           tags: ${{ steps.image_hash.outputs.image }}
           cache-from: type=gha
           cache-to: type=gha
+          # To use these secrets, use `RUN --mount=type=secret,id=aws_access_key_id`
+          # in your dockerfile. See https://docs.docker.com/build/ci/github-actions/secrets/
           secrets: |
             aws_access_key_id=${{ secrets.aws_access_key_id }}
             aws_secret_access_key=${{ secrets.aws_secret_access_key }}
