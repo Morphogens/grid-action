@@ -124,6 +124,9 @@ jobs:
           tags: ${{ steps.image_hash.outputs.image }}
           cache-from: type=gha
           cache-to: type=gha
+          build-args:
+            AWS_ACCESS_KEY_ID: ${{ secrets.aws_access_key_id }}
+            AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_access_key }}            
 
       - name: Test
         if: inputs.docker_test_command && steps.build.conclusion == 'success'
