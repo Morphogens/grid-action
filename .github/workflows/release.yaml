@@ -115,7 +115,7 @@ jobs:
 
       - name: Build docker image
         id: build
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         if: steps.image_hash.outputs.exists == 'false'
         with:
           context: ${{ inputs.docker_context }}
@@ -124,6 +124,11 @@ jobs:
           tags: ${{ steps.image_hash.outputs.image }}
           cache-from: type=gha
           cache-to: type=gha
+          # To use these secrets, use `RUN --mount=type=secret,id=aws_access_key_id`
+          # in your dockerfile. See https://docs.docker.com/build/ci/github-actions/secrets/
+          secrets: |
+            aws_access_key_id=${{ secrets.aws_access_key_id }}
+            aws_secret_access_key=${{ secrets.aws_secret_access_key }}
 
       - name: Test
         if: inputs.docker_test_command && steps.build.conclusion == 'success'
