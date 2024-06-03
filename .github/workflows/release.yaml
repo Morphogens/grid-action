@@ -3,6 +3,10 @@ name: "Morphogen grid build and release"
 on:
   workflow_call:
     inputs:
+      build_runner:
+        type: string
+        required: false
+        default: ubuntu-latest
       docker_context:
         type: string
         required: true
@@ -54,7 +58,7 @@ on:
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.build_runner }}
     steps:
       - name: Check out the repository
         uses: actions/checkout@v3
