@@ -42,11 +42,11 @@ on:
       grid_staging_cluster:
         type: string
         required: false
-        default: grid-staging
+        default: grid-staging-b
       grid_test_cluster:
         type: string
         required: false
-        default: grid-staging
+        default: grid-staging-b
     secrets:
       aws_access_key_id:
         required: true
