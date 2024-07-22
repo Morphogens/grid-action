@@ -38,15 +38,15 @@ on:
       grid_production_cluster:
         type: string
         required: false
-        default: grid-production
+        default: default
       grid_staging_cluster:
         type: string
         required: false
-        default: grid-staging-b
+        default: default
       grid_test_cluster:
         type: string
         required: false
-        default: grid-staging-b
+        default: default
     secrets:
       aws_access_key_id:
         required: true
